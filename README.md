@@ -1,50 +1,139 @@
-# Welcome to your Expo app 👋
+# Simpsons Notes (Expo RN)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicacion movil para consumir The Simpsons API, autenticar usuarios localmente y gestionar notas/favoritos por personaje.
 
-## Get started
+## Setup
 
-1. Install dependencies
+Requisitos:
 
-   ```bash
-   npm install
-   ```
+- Node 20+
+- Expo CLI (`npm install -g expo-cli`) o `npx expo`
+- iOS Simulator / Android Emulator (opcional)
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Instalacion:
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Ejecutar:
 
-## Learn more
+```bash
+npm run ios
+npm run android
+npm run web
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Tests:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npm run test
+```
 
-## Join the community
+Lint/format:
 
-Join our community of developers creating universal apps.
+```bash
+npm run lint
+npm run format
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Decisiones tecnicas
+
+- Expo managed + Expo Router: velocidad de entrega en 8h y rutas por archivos claras.
+- SQLite (`expo-sqlite`): persistencia offline con modelo relacional sencillo (usuarios/notas).
+- SecureStore: token de sesion persistido de forma segura.
+- TanStack Query: cache, paginacion y estados de red con `useInfiniteQuery`.
+- React Hook Form + Zod: formularios tipados con validacion consistente.
+- Hash de password en JS: PBKDF2 (CryptoJS) + salt. Trade-off: menos robusto que bcrypt nativo, pero funciona en Expo managed.
+
+## Arquitectura
+
+Estructura feature-based con core compartido:
+
+```
+app/
+  (auth)/login.tsx, register.tsx
+  (app)/characters, notes, episodes
+core/
+  api/
+  db/
+  providers/
+  session/
+  utils/
+features/
+  auth/
+  notes/
+components/
+```
+
+Diagrama simple:
+
+```
+UI (app/*) -> features/* (validation)
+UI -> core/api (Simpsons API)
+UI -> core/db (SQLite)
+core/session -> SecureStore
+```
+
+## Modelo de datos (SQLite)
+
+```
+users:
+  id (uuid)
+  email (unique)
+  passwordHash
+  passwordSalt
+  createdAt
+
+notes:
+  id (uuid)
+  userId
+  characterId
+  title
+  text
+  rating (0-5)
+  updatedAt
+```
+
+## The Simpsons API
+
+Client en `core/api/simpsonsApi.ts`:
+
+- `getCharacters({ page, nameQuery })`
+- `getCharacterById(id)`
+- `getEpisodes({ page })`
+- `getEpisodeById(id)`
+
+Base URL usada: `https://thesimpsonsapi.com/api`  
+Mapeo de media: `portrait_path` (personajes) y `image_path` (episodios) usan el CDN oficial.
+
+Paginacion: la API devuelve 20 items por pagina; el infinite scroll respeta ese tamano y usa `page` incremental.
+
+## Sesion
+
+- Token generado en memoria por login/registro.
+- Persistencia segura en SecureStore (`core/session/sessionStorage.ts`).
+- Se restaura en el arranque antes de mostrar rutas protegidas.
+
+## Limitaciones y mejoras futuras
+
+- Sin sincronizacion remota: usuarios/notas solo locales.
+- UI aun basica: se puede mejorar con tema, skeletons mas sofisticados y animaciones.
+- Cobertura de tests incluye validaciones, repositorios y un hook base; se puede ampliar con mas flujos de UI.
+
+## Cheatsheet de rutas
+
+- `/login`, `/register`
+- `/characters` (listado + busqueda)
+- `/characters/[id]` (detalle + notas)
+- `/notes/edit` (crear/editar)
+- `/episodes` (listado)
+- `/episodes/[id]` (detalle)
+
+## Scripts
+
+- `npm run start` (dev)
+- `npm run ios` / `npm run android`
+- `npm run test`
+- `npm run lint`
+- `npm run format`
